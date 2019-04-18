@@ -1,0 +1,2 @@
+from .multinomial_naive_bayes import MNBTextClassifier
+from .multilabel_naive_bayes import MultilabelMNBTextClassifier
