@@ -1,16 +1,17 @@
 from collections import defaultdict
+import numpy as np
 
 # TODO: set to log proba
 # all proba is in log scale
-
+# binary only
 class MNBTextClassifier:
 
     def __init__(self, vocabulary=None):
         self.fit_done = False
         self.vocabulary = vocabulary
-        self.prior = defaultdict(float)
-        self.condprob = defaultdict(lambda: defaultdict(float))
-        self.condprob_denom = defaultdict(int)  # for denominator
+        self.log_prior = defaultdict(float) # log scale
+        self.log_condprob = defaultdict(lambda: defaultdict(float)) # log scale
+        self.condprob_denom = defaultdict(int)  # for denominator, not log scale
         self.y_count = defaultdict(int)
 
     # p(class=y | {term0=x[0], term1=x[1], ...} )
@@ -18,25 +19,27 @@ class MNBTextClassifier:
     def proba_y_given_x(self, y, x):
         assert self.fit_done
 
-        # p(x | y)
-        proba_x_given_y = defaultdict(lambda: 1.0)
-        for y_val in self.y_count:
+        # p(x | y), log scale
+        proba_x_given_y = defaultdict(float)
+        for y_val in [0, 1]:
             for term in x:
-                if term not in self.condprob or y_val not in self.condprob[term]:
-                    proba_x_given_y[y_val] *= 1 / (self.condprob_denom[y_val] + len(self.vocabulary))
+                if term not in self.log_condprob or y_val not in self.log_condprob[term]:
+                    proba_x_given_y[y_val] -= np.log(self.condprob_denom[y_val] + len(self.vocabulary))
                 else:
-                    proba_x_given_y[y_val] *= self.condprob[term][y_val]
-                assert proba_x_given_y[y_val] != 0
+                    proba_x_given_y[y_val] += self.log_condprob[term][y_val]
 
-        result_numerator = proba_x_given_y[y] * self.proba_y(y)
-        result_denumerator = sum(proba_x_given_y[y_val] * self.proba_y(y_val)
-                                 for y_val in self.y_count)
-        return result_numerator / result_denumerator
+        log_result_numerator = proba_x_given_y[y] + self.log_proba_y(y)
 
-    # p(c)
-    def proba_y(self, y):
+        # log (x+y) = log(x) + log1p(exp(log(y) - log(x)) <-- for denominator
+        log_result_denom = tuple(proba_x_given_y[y_val] + self.log_proba_y(y_val) for y_val in [0, 1])
+        log_result_denom_sum = log_result_denom[0] + np.log1p(np.exp(log_result_denom[1] - log_result_denom[0]))
+
+        return log_result_numerator - log_result_denom_sum
+
+    # p(c), log scale
+    def log_proba_y(self, y):
         assert self.fit_done
-        return self.prior[y]
+        return self.log_prior[y]
 
     # update self.prior[class] as p(class=class)
     # update self.condprob[term][class] as p(term=term | class=class)
@@ -47,10 +50,14 @@ class MNBTextClassifier:
         # Set up prior values and count number of labels
         for y_i in y:
             self.y_count[y_i] += 1
-            self.prior[y_i] += 1
+            self.log_prior[y_i] += 1
 
-        for y_val in self.prior:
-            self.prior[y_val] /= len(y)
+        # assert that data has only 2 classes (0 and 1)
+        assert len(self.y_count) == 2
+        assert 1 in self.y_count and 0 in self.y_count
+
+        for y_val in self.log_prior:
+            self.log_prior[y_val] = np.log(self.log_prior[y_val]) - np.log(len(y))
 
         # Create vocabulary
         if self.vocabulary is None:
@@ -59,36 +66,35 @@ class MNBTextClassifier:
         # Set up intermediate value for condprob (also sets up condprob_denom)
         for x, y_i in zip(X, y):
             for term in x:
-                self.condprob[term][y_i] += 1  # intermediate value (numerator) --> frequency
+                self.log_condprob[term][y_i] += 1  # intermediate value (numerator) --> frequency
             self.condprob_denom[y_i] += len(x)
 
         # Final value for condprob
         for term in self.vocabulary:
-            for y_val in self.y_count.keys():
-
-                self.condprob[term][y_val] = (self.condprob[term][y_val] + 1) / \
-                                             (self.condprob_denom[y_val] + len(self.vocabulary))
+            for y_val in [0, 1]:
+                self.log_condprob[term][y_val] = np.log(self.log_condprob[term][y_val] + 1) - \
+                                                 np.log(self.condprob_denom[y_val] + len(self.vocabulary))
 
         self.fit_done = True
         # return self
 
     # returns: (class, prob), ... in descending order
-    def predict_proba_single(self, x):
+    def predict_log_proba_single(self, x):
         assert self.fit_done
 
-        class_probs = [(y_val, self.proba_y_given_x(y_val, x)) for y_val in self.y_count]
+        class_probs = [(y_val, self.proba_y_given_x(y_val, x)) for y_val in [0, 1]]
         class_probs.sort(key=lambda x: x[1], reverse=True)
         return class_probs
 
-    def predict_proba(self, X):
+    def predict_log_proba(self, X):
         assert self.fit_done
 
-        return [self.predict_proba_single(x) for x in X]
+        return [self.predict_log_proba_single(x) for x in X]
 
     def predict_single(self, x):
         assert self.fit_done
 
-        class_probs = self.predict_proba_single(x)
+        class_probs = self.predict_log_proba_single(x)
         return class_probs[0][0]
 
     def predict(self, X):

@@ -2,7 +2,7 @@
 # https://stats.stackexchange.com/questions/12702/what-are-the-measure-for-accuracy-of-multilabel-data
 
 
-def accuracy(Y_true, Y_pred):
+def multilabel_accuracy(Y_true, Y_pred):
     assert(len(Y_true) == len(Y_pred))
 
     n = len(Y_true)

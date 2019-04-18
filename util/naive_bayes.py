@@ -2,7 +2,7 @@ import sys
 from model.naive_bayes import MNBTextClassifier
 
 
-def get_ovr_classifier(X, Y, vocabulary, label, return_label=False):
+def get_binary_clf_from_multilabel(X, Y, vocabulary, label, return_label=False):
     print('nb_util: creating classifier for label', label)
     sys.stdout.flush()
     clf = MNBTextClassifier(vocabulary=vocabulary)

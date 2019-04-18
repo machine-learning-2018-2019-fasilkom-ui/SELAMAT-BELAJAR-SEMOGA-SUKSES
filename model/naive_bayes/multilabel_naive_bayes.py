@@ -4,10 +4,11 @@ import sys
 import time
 from .multinomial_naive_bayes import MNBTextClassifier
 from util.multiprocessing import sequential_execute
-from util.naive_bayes import get_ovr_classifier
+from util.naive_bayes import get_binary_clf_from_multilabel
 
 # Multilabel MNB Text Classifier, implemented via one vs rest
 # Implemented with multiprocessing
+# Probability with log scale
 class MultilabelMNBTextClassifier:
 
     def __init__(self, n_jobs=-1):
@@ -27,7 +28,7 @@ class MultilabelMNBTextClassifier:
 
         now = time.time()
         pool = mp.Pool(self.n_jobs)
-        results = pool.starmap_async(sequential_execute, [(get_ovr_classifier,
+        results = pool.starmap_async(sequential_execute, [(get_binary_clf_from_multilabel,
                                                            [{
                                                                'X': X,
                                                                'Y': Y,
@@ -43,12 +44,12 @@ class MultilabelMNBTextClassifier:
 
         self.fit_done = True
 
-    def predict_proba_single(self, x, max_classes=-1):
+    def predict_log_proba_single(self, x, max_classes=-1):
         assert self.fit_done
 
         class_proba = []
         for label in self.classifiers:
-            proba = dict(self.classifiers[label].predict_proba_single(x))[1]
+            proba = dict(self.classifiers[label].predict_log_proba_single(x))[1]
             class_proba.append((label, proba))
 
         class_proba.sort(key=lambda x: x[1], reverse=True)
@@ -57,7 +58,7 @@ class MultilabelMNBTextClassifier:
         else:
             return class_proba[:max_classes]
 
-    def predict_proba(self, X, max_classes=-1):
+    def predict_log_proba(self, X, max_classes=-1):
         assert self.fit_done
-        return [self.predict_proba_single(x, max_classes=max_classes) for x in X]
+        return [self.predict_log_proba_single(x, max_classes=max_classes) for x in X]
 
