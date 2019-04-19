@@ -1,14 +1,12 @@
 from collections import defaultdict
 import numpy as np
 
-# TODO: set to log proba
 # all proba is in log scale
 # binary only
 class MNBTextClassifier:
 
-    def __init__(self, vocabulary=None):
+    def __init__(self):
         self.fit_done = False
-        self.vocabulary = vocabulary
         self.log_prior = defaultdict(float) # log scale
         self.log_condprob = defaultdict(lambda: defaultdict(float)) # log scale
         self.condprob_denom = defaultdict(int)  # for denominator, not log scale
@@ -24,7 +22,7 @@ class MNBTextClassifier:
         for y_val in [0, 1]:
             for term in x:
                 if term not in self.log_condprob or y_val not in self.log_condprob[term]:
-                    proba_x_given_y[y_val] -= np.log(self.condprob_denom[y_val] + len(self.vocabulary))
+                    proba_x_given_y[y_val] -= np.log(self.condprob_denom[y_val] + self.vocab_len)
                 else:
                     proba_x_given_y[y_val] += self.log_condprob[term][y_val]
 
@@ -59,24 +57,21 @@ class MNBTextClassifier:
         for y_val in self.log_prior:
             self.log_prior[y_val] = np.log(self.log_prior[y_val]) - np.log(len(y))
 
-        # Create vocabulary
-        if self.vocabulary is None:
-            self.vocabulary = set(word for x in X for word in x)
-
         # Set up intermediate value for condprob (also sets up condprob_denom)
         for x, y_i in zip(X, y):
             for term in x:
                 self.log_condprob[term][y_i] += 1  # intermediate value (numerator) --> frequency
             self.condprob_denom[y_i] += len(x)
+        self.vocab_len = len(self.log_condprob.keys()) # vocabulary
 
         # Final value for condprob
-        for term in self.vocabulary:
+        for term in self.log_condprob.keys(): # vocabulary
             for y_val in [0, 1]:
                 self.log_condprob[term][y_val] = np.log(self.log_condprob[term][y_val] + 1) - \
-                                                 np.log(self.condprob_denom[y_val] + len(self.vocabulary))
+                                                 np.log(self.condprob_denom[y_val] + self.vocab_len)
 
         self.fit_done = True
-        # return self
+        return self
 
     # returns: (class, prob), ... in descending order
     def predict_log_proba_single(self, x):

@@ -4,12 +4,11 @@ from multiprocess import Manager, Queue, Process
 import pathos.multiprocessing as mp
 import sys
 import time
-from .multinomial_naive_bayes import MNBTextClassifier
 from util.multiprocessing import sequential_execute
-from util.naive_bayes import get_binary_clf_from_multilabel
+from util.naive_bayes import get_binary_clf_from_multilabel, multilabel_proba_single
 
 # Multilabel MNB Text Classifier, implemented via one vs rest
-# Implemented with multiprocessing
+# Also implemented with multiprocessing
 # Probability with log scale
 class MultilabelMNBTextClassifier:
 
@@ -23,7 +22,6 @@ class MultilabelMNBTextClassifier:
         assert len(X) == len(Y)
 
         possible_labels = list(set(y_val for y in Y for y_val in y))
-        self.vocabulary = set(word for x in X for word in x)
 
         # print('possible_labels:', possible_labels)
         job_labels = np.array_split(possible_labels, self.n_jobs)
@@ -32,24 +30,22 @@ class MultilabelMNBTextClassifier:
         with Manager() as manager:
             X_proxy = manager.list(X)
             Y_proxy = manager.list(Y)
-            vocab_proxy = manager.list(list(self.vocabulary))
-            # print('getting')
+            print('getting')
             output_queue = Queue()
             processes = [Process(target=sequential_execute,
                                  args=(output_queue,
                                        get_binary_clf_from_multilabel,
                                        [{'X': X_proxy,
                                          'Y': Y_proxy,
-                                         'vocabulary': vocab_proxy,
                                          'label': lbl,
                                          'return_label': True
                                          } for lbl in job]))
                          for job in job_labels]
             [p.start() for p in processes]
-            results = [output_queue.get() for p in processes]
+            results = [output_queue.get() for lbl in possible_labels] # needs to be flattened
             [p.join() for p in processes]
-        results_flat = [label_classifier for sublist in results for label_classifier in sublist]
-        self.classifiers = dict(results_flat)
+
+        self.classifiers = dict(results)
         print('fit time elapsed:', (time.time() - now))
         print(self.classifiers)
 
@@ -71,5 +67,32 @@ class MultilabelMNBTextClassifier:
 
     def predict_log_proba(self, X, max_classes=-1):
         assert self.fit_done
-        return [self.predict_log_proba_single(x, max_classes=max_classes) for x in X]
+
+        now = time.time()
+        with Manager() as manager:
+            # X_proxies = [(idx, manager.list(x)) for idx, x in enumerate(X)]
+            X_proxies = [(idx, x) for idx, x in enumerate(X)]
+            job_X = np.array_split(X_proxies, self.n_jobs)
+            # job_X = np.array_split(X, self.n_jobs)
+            # classifiers_proxy = manager.list(self.classifiers.items())
+            # classifiers_proxy.list(self.classifiers)
+            output_queue = Queue()
+            # TODO: continue
+            processes = [Process(target=sequential_execute,
+                                 args=(output_queue,
+                                       multilabel_proba_single,
+                                       [{
+                                           'x': x,
+                                           'classifiers': self.classifiers,
+                                           'max_classes': max_classes,
+                                           'output_id': idx
+                                       } for idx, x in job]
+                                 )) for job in job_X]
+            [p.start() for p in processes]
+            results = [output_queue.get() for x in X]  # needs to be sorted
+            [p.join() for p in processes]
+
+        results.sort(key=lambda x: x[0])
+        print('predict elapsed:', (time.time() - now))
+        return [predicted for idx, predicted in results]
 

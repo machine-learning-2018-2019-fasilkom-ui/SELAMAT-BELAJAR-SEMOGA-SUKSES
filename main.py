@@ -5,6 +5,7 @@ import re
 import pickle
 from model.naive_bayes import MultilabelMNBTextClassifier
 from metric.multilabel import multilabel_accuracy
+import time
 
 # given panda dataframe return X(examples) and Y(class)
 def data_to_examples(df):
@@ -33,8 +34,9 @@ if __name__ == '__main__':
     X, y = data_to_examples(train_df)
     genres = set(genre for y_i in y for genre in y_i)
     print('preprocessing done.')
+    print('training len', len(X))
 
-    clf = MultilabelMNBTextClassifier()
+    clf = MultilabelMNBTextClassifier(n_jobs=4)
     clf.fit(X, y)
     # with open('multilabel_mnb.classifier', 'rb') as pickle_file:
     #     clf = pickle.load(pickle_file)
@@ -44,10 +46,17 @@ if __name__ == '__main__':
     tresholds = np.log(tresholds)
     treshold = 0.5
     best_jaccard_similarity = 0
+
+    # probas_all = clf.predict_log_proba(X)
     for t in tresholds:
         y_pred = []
-        for x, y_i in zip(X, y):
+        now = time.time()
+        for idx, (x, y_i) in enumerate(zip(X, y)):
+            # print(idx)
+            # print(x)
+            # print(y_i)
             predicted_genres = []
+            # probas = dict(probas_all[idx])
             probas = dict(clf.predict_log_proba_single(x))
             for genre in genres:
                 if probas[genre] > t:
@@ -55,6 +64,7 @@ if __name__ == '__main__':
             y_pred.append(predicted_genres)
         avg_jaccard = multilabel_accuracy(y, y_pred)
         print(np.exp(t), avg_jaccard)
+        print('elapsed', (time.time() - now))
         if avg_jaccard > best_jaccard_similarity:
             best_jaccard_similarity = avg_jaccard
             treshold = t
