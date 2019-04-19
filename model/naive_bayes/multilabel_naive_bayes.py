@@ -30,7 +30,7 @@ class MultilabelMNBTextClassifier:
         with Manager() as manager:
             X_proxy = manager.list(X)
             Y_proxy = manager.list(Y)
-            print('getting')
+            # print('getting')
             output_queue = Queue()
             processes = [Process(target=sequential_execute,
                                  args=(output_queue,
@@ -46,8 +46,8 @@ class MultilabelMNBTextClassifier:
             [p.join() for p in processes]
 
         self.classifiers = dict(results)
-        print('fit time elapsed:', (time.time() - now))
-        print(self.classifiers)
+        # print('fit time elapsed:', (time.time() - now))
+        # print(self.classifiers)
 
         self.fit_done = True
 
