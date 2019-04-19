@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import json
 import re
-import pickle
+import dill
 from model.naive_bayes import MultilabelMNBTextClassifier
 from metric.multilabel import multilabel_accuracy
 import time
@@ -24,8 +24,8 @@ def data_to_examples(df):
 
 if __name__ == '__main__':
     # load data
-    train_df = pd.read_csv('data/to_debug.csv')
-    # train_df = pd.read_csv('data/cerpen-training.csv')
+    # train_df = pd.read_csv('data/to_debug.csv')
+    train_df = pd.read_csv('data/cerpen-training.csv')
     cv_df = pd.read_csv('data/cerpen-cross_validation.csv')
     test_df = pd.read_csv('data/cerpen-test.csv')
 
@@ -36,10 +36,11 @@ if __name__ == '__main__':
     print('preprocessing done.')
     print('training len', len(X))
 
-    clf = MultilabelMNBTextClassifier(n_jobs=4)
+    clf = MultilabelMNBTextClassifier(n_jobs=6)
     clf.fit(X, y)
-    # with open('multilabel_mnb.classifier', 'rb') as pickle_file:
+    with open('multilabel_mnb2.classifier', 'wb') as pickle_file:
     #     clf = pickle.load(pickle_file)
+        dill.dump(clf, pickle_file)
     print('done')
 
     tresholds = np.array([0.01, 0.3, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95])
@@ -47,24 +48,18 @@ if __name__ == '__main__':
     treshold = 0.5
     best_jaccard_similarity = 0
 
-    # probas_all = clf.predict_log_proba(X)
+    probas_all = clf.predict_log_proba(X)
     for t in tresholds:
         y_pred = []
-        now = time.time()
         for idx, (x, y_i) in enumerate(zip(X, y)):
-            # print(idx)
-            # print(x)
-            # print(y_i)
             predicted_genres = []
-            # probas = dict(probas_all[idx])
-            probas = dict(clf.predict_log_proba_single(x))
+            probas = dict(probas_all[idx])
             for genre in genres:
                 if probas[genre] > t:
                     predicted_genres.append(genre)
             y_pred.append(predicted_genres)
         avg_jaccard = multilabel_accuracy(y, y_pred)
         print(np.exp(t), avg_jaccard)
-        print('elapsed', (time.time() - now))
         if avg_jaccard > best_jaccard_similarity:
             best_jaccard_similarity = avg_jaccard
             treshold = t
