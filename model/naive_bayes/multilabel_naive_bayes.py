@@ -1,4 +1,6 @@
 import numpy as np
+from multiprocess import Manager, Queue, Process
+# import multiprocess as mp
 import pathos.multiprocessing as mp
 import sys
 import time
@@ -23,20 +25,29 @@ class MultilabelMNBTextClassifier:
         possible_labels = list(set(y_val for y in Y for y_val in y))
         self.vocabulary = set(word for x in X for word in x)
 
-        print('possible_labels:', possible_labels)
+        # print('possible_labels:', possible_labels)
         job_labels = np.array_split(possible_labels, self.n_jobs)
 
         now = time.time()
-        pool = mp.Pool(self.n_jobs)
-        results = pool.starmap_async(sequential_execute, [(get_binary_clf_from_multilabel,
-                                                           [{
-                                                               'X': X,
-                                                               'Y': Y,
-                                                               'vocabulary': self.vocabulary,
-                                                               'label': lbl,
-                                                               'return_label': True
-                                                           } for lbl in job])
-                                                          for job in job_labels]).get()
+        with Manager() as manager:
+            X_proxy = manager.list(X)
+            Y_proxy = manager.list(Y)
+            vocab_proxy = manager.list(list(self.vocabulary))
+            # print('getting')
+            output_queue = Queue()
+            processes = [Process(target=sequential_execute,
+                                 args=(output_queue,
+                                       get_binary_clf_from_multilabel,
+                                       [{'X': X_proxy,
+                                         'Y': Y_proxy,
+                                         'vocabulary': vocab_proxy,
+                                         'label': lbl,
+                                         'return_label': True
+                                         } for lbl in job]))
+                         for job in job_labels]
+            [p.start() for p in processes]
+            results = [output_queue.get() for p in processes]
+            [p.join() for p in processes]
         results_flat = [label_classifier for sublist in results for label_classifier in sublist]
         self.classifiers = dict(results_flat)
         print('fit time elapsed:', (time.time() - now))

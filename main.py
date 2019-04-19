@@ -24,6 +24,7 @@ def data_to_examples(df):
 if __name__ == '__main__':
     # load data
     train_df = pd.read_csv('data/to_debug.csv')
+    # train_df = pd.read_csv('data/cerpen-training.csv')
     cv_df = pd.read_csv('data/cerpen-cross_validation.csv')
     test_df = pd.read_csv('data/cerpen-test.csv')
 
@@ -45,7 +46,7 @@ if __name__ == '__main__':
     best_jaccard_similarity = 0
     for t in tresholds:
         y_pred = []
-        for x, y_i in list(zip(X, y))[:5]:
+        for x, y_i in zip(X, y):
             predicted_genres = []
             probas = dict(clf.predict_log_proba_single(x))
             for genre in genres:
