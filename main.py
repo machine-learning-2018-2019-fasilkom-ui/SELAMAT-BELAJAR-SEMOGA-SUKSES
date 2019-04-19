@@ -12,7 +12,7 @@ def data_to_examples(df):
     X = []
     y = []
     for idx, row in df.iterrows():
-        categories = json.loads(str(row['categories']).replace("\'", '\"'))
+        categories = json.loads(str(row['categories_cut']).replace("\'", '\"'))
         text = str(row['text']).lower()
         text = re.sub('[^a-z]+', ' ', text)
         x = text.split()
@@ -24,8 +24,8 @@ def data_to_examples(df):
 
 if __name__ == '__main__':
     # load data
-    # train_df = pd.read_csv('data/to_debug.csv')
-    train_df = pd.read_csv('data/cerpen-training.csv')
+    train_df = pd.read_csv('data/to_debug.csv')
+    # train_df = pd.read_csv('data/cerpen-training.csv')
     cv_df = pd.read_csv('data/cerpen-cross_validation.csv')
     test_df = pd.read_csv('data/cerpen-test.csv')
 
@@ -38,8 +38,8 @@ if __name__ == '__main__':
 
     clf = MultilabelMNBTextClassifier(n_jobs=6)
     clf.fit(X, y)
-    with open('multilabel_mnb2.classifier', 'wb') as pickle_file:
-    #     clf = pickle.load(pickle_file)
+    with open('multilabel_mnb2.classifier', 'rb') as pickle_file:
+    #     clf = dill.load(pickle_file)
         dill.dump(clf, pickle_file)
     print('done')
 
