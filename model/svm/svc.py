@@ -65,7 +65,7 @@ class SVMClassifier:
             G = cvxopt.matrix(np.vstack((np.diag(np.ones(n) * -1), np.identity(n))))
             h = cvxopt.matrix(np.hstack((np.zeros(n), np.ones(n) * self.C)))
 
-        cvxopt.solvers.options['show_progress'] = True
+        cvxopt.solvers.options['show_progress'] = False
         res = cvxopt.solvers.qp(P, q, G, h, A, b)
         _lambda = np.ravel(res['x'])
         return _lambda

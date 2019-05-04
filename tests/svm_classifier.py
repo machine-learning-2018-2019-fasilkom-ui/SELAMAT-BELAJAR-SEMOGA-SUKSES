@@ -14,7 +14,7 @@ def test_svm():
     X[50:,1] = np.random.uniform(-2,6,50)
     y = np.array([-1 if i < 50 else 1 for i in range(100)])
 
-    svm = SVMClassifier(kernel='poly')
+    svm = SVMClassifier(kernel='poly', poly_c=1, poly_d=3)
     svm.fit(X,y)
     return X,y,svm
 
