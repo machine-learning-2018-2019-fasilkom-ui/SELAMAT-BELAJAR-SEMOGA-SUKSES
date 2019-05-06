@@ -4,10 +4,11 @@ import cvxopt
 
 class SVMClassifier:
 
-    def __init__(self, kernel='linear', C=None, TOL=1e-7, **kwargs):
+    def __init__(self, kernel='linear', C=None, TOL=1e-7, show_progress=False, **kwargs):
         self.fit_done = False
         self.C = C
         self.TOL = TOL
+        self.show_progress = show_progress
         if kernel == 'linear':
             self.kernel_func = self.__kernel_linear
         elif kernel == 'poly':
@@ -20,6 +21,15 @@ class SVMClassifier:
 
     def fit(self, X, y):
         assert not self.fit_done
+
+        classes = np.unique(y)
+        assert len(classes) == 2
+
+        self.label_map = {-1: classes[0], 1: classes[1]}
+        y = y.copy()
+        y[y == classes[0]] = -1
+        y[y == classes[1]] = 1
+
         self._lambda = self.__generate_lambda(X, y)
         self.lambda_sv = self._lambda[self._lambda > self.TOL]
         self.sv = X[self._lambda > self.TOL]
@@ -34,12 +44,17 @@ class SVMClassifier:
             self.b += svt_i - tmp
         self.b /= sv_num
 
+        return self
+
     def predict(self, X):
         y_predict = np.array([sum(a_i * svt_i * self.kernel_func(sv_i, x)
                                   for a_i, sv_i, svt_i in zip(self.lambda_sv, self.sv, self.svt))
                               for x in X])
 
-        return np.sign(y_predict + self.b), y_predict + self.b
+        return np.array(list(map(lambda x: self.label_map[x],
+                                 np.sign(y_predict + self.b)))
+                        ),\
+               y_predict + self.b
 
     def __generate_lambda(self, X, y):
         n, features = X.shape
@@ -49,7 +64,8 @@ class SVMClassifier:
         P = np.zeros((n, n))
         for i in range(n):
             for j in range(n):
-                P[i,j] = y[i]*y[j]*self.kernel_func(X[i], X[j])
+                ker_val = self.kernel_func(X[i,:], X[j,:])
+                P[i,j] = y[i]*y[j]*ker_val
 
         P = cvxopt.matrix(P)
         q = cvxopt.matrix(np.ones(n) * -1)
@@ -65,7 +81,7 @@ class SVMClassifier:
             G = cvxopt.matrix(np.vstack((np.diag(np.ones(n) * -1), np.identity(n))))
             h = cvxopt.matrix(np.hstack((np.zeros(n), np.ones(n) * self.C)))
 
-        cvxopt.solvers.options['show_progress'] = False
+        cvxopt.solvers.options['show_progress'] = self.show_progress
         res = cvxopt.solvers.qp(P, q, G, h, A, b)
         _lambda = np.ravel(res['x'])
         return _lambda
@@ -78,6 +94,8 @@ class SVMClassifier:
         return np.power((np.dot(x, y) + c), d)
 
     def __kernel_rbf(self, x, y, sigma):
+        # x = x.reshape(-1, )
+        # y = y.reshape(-1, )
         vec_diff = x - y
         norm_squared = np.power(np.linalg.norm(vec_diff), 2)
         return np.exp(-norm_squared/(2*np.power(sigma, 2)))

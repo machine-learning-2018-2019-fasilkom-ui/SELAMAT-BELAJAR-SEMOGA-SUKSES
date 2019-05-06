@@ -17,6 +17,7 @@ def get_binary_clf_from_multilabel(X, Y, label, return_label=False):
         return label, clf
     return clf
 
+
 def multilabel_proba_single(x, classifiers, max_classes=-1, output_id=None):
     # process = mp.current_process()
     # print('PID:', process.pid, 'id:', output_id)
@@ -31,6 +32,7 @@ def multilabel_proba_single(x, classifiers, max_classes=-1, output_id=None):
         return class_proba if output_id is None else (output_id, class_proba)
     else:
         return class_proba[:max_classes] if output_id is None else class_proba
+
 
 def get_predictions(label_log_probas, threshold=np.log(0.5)):
     predictions = []

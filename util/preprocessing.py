@@ -13,5 +13,6 @@ def data_to_examples(df):
         x = text.split()
 
         X.append(x)
+        # print(x)
         y.append(categories)
     return np.array(X), np.array(y)
