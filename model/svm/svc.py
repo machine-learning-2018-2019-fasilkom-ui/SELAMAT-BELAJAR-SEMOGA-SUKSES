@@ -1,5 +1,6 @@
 import numpy as np
 import cvxopt
+import time
 
 
 class SVMClassifier:
@@ -10,14 +11,15 @@ class SVMClassifier:
         self.TOL = TOL
         self.show_progress = show_progress
         if kernel == 'linear':
-            self.kernel_func = self.__kernel_linear
+            self.ker_mat_func = self.__ker_mat_linear
         elif kernel == 'poly':
             poly_c = kwargs.get('poly_c', 0)
             poly_d = kwargs.get('poly_d', 2)
-            self.kernel_func = lambda x,y: self.__kernel_poly(x, y, poly_c, poly_d)
+            self.ker_mat_func = lambda x, y: self.__ker_mat_poly(x, y, poly_c, poly_d)
         elif kernel == 'rbf':
             rbf_sigma = kwargs.get('rbf_sigma', 5)
-            self.kernel_func = lambda x,y: self.__kernel_rbf(x, y, rbf_sigma)
+            print(rbf_sigma)
+            self.ker_mat_func = lambda x, y: self.__ker_mat_rbf(x, y, rbf_sigma)
 
     def fit(self, X, y):
         assert not self.fit_done
@@ -36,36 +38,34 @@ class SVMClassifier:
         self.svt = y[self._lambda > self.TOL]
 
         sv_num = len(self.sv)
+        print('support vectors:', sv_num)
 
-        self.b = 0
-        for a_i, sv_i, svt_i in zip(self.lambda_sv, self.sv, self.svt):
-            tmp = sum(a_j * svt_j * self.kernel_func(sv_i, sv_j)
-                      for a_j, sv_j, svt_j in zip(self.lambda_sv, self.sv, self.svt))
-            self.b += svt_i - tmp
-        self.b /= sv_num
+        lambda_svt = self.lambda_sv * self.svt # lambda_m * t_m
+        sv_ker_mat = self.ker_mat_func(self.sv, self.sv) # np.matmul(self.sv, self.sv.T) # (in linear) TODO: fix
+        self.b = (1./sv_num) * (self.svt.sum() - (sv_ker_mat @ lambda_svt).sum())
 
         return self
 
     def predict(self, X):
-        y_predict = np.array([sum(a_i * svt_i * self.kernel_func(sv_i, x)
-                                  for a_i, sv_i, svt_i in zip(self.lambda_sv, self.sv, self.svt))
-                              for x in X])
+        lambda_svt_diag = np.diag(self.lambda_sv * self.svt)
+        sv_ker_mat = self.ker_mat_func(self.sv, X) #np.matmul(self.sv, X.T)
+        y_predict = np.matmul(lambda_svt_diag, sv_ker_mat)
+        y_predict = y_predict.sum(axis=0)
+        y_predict += self.b
 
-        return np.array(list(map(lambda x: self.label_map[x],
-                                 np.sign(y_predict + self.b)))
-                        ),\
-               y_predict + self.b
+        return np.array(list(map(lambda x: self.label_map[x], np.sign(y_predict)))),\
+               y_predict
 
     def __generate_lambda(self, X, y):
         n, features = X.shape
 
         # http://cvxopt.org/userguide/coneprog.html#quadratic-programming
         # need to maximize L(lambda) w.r.t. lambda --> minimize -L(lambda)
-        P = np.zeros((n, n))
-        for i in range(n):
-            for j in range(n):
-                ker_val = self.kernel_func(X[i,:], X[j,:])
-                P[i,j] = y[i]*y[j]*ker_val
+        print('Constructing matrix P')
+        now = time.time()
+        ker_mat = self.ker_mat_func(X, X)
+        P = np.outer(y, y) * ker_mat
+        print('Construction done in', (time.time() - now), 'seconds')
 
         P = cvxopt.matrix(P)
         q = cvxopt.matrix(np.ones(n) * -1)
@@ -87,15 +87,22 @@ class SVMClassifier:
         return _lambda
 
 
-    def __kernel_linear(self, x, y):
-        return np.dot(x, y)
+    def __ker_mat_linear(self, X1, X2):
+        return np.matmul(X1, X2.T)
 
-    def __kernel_poly(self, x, y, c, d):
-        return np.power((np.dot(x, y) + c), d)
+    def __ker_mat_poly(self, X1, X2, c, d):
+        dp_matrix = np.matmul(X1, X2.T)
+        ker_mat = np.power((dp_matrix + c), d)
+        return ker_mat
 
-    def __kernel_rbf(self, x, y, sigma):
-        # x = x.reshape(-1, )
-        # y = y.reshape(-1, )
-        vec_diff = x - y
-        norm_squared = np.power(np.linalg.norm(vec_diff), 2)
-        return np.exp(-norm_squared/(2*np.power(sigma, 2)))
+    # https://stackoverflow.com/questions/37362258/creating-a-radial-basis-function-kernel-matrix-in-matlab
+    # ||x1_i - x2_j||^2 = ||x_i||^2 - 2<x_i, x_j> + ||x_j||^2
+    def __ker_mat_rbf(self, X1, X2, sigma):
+        dp_matrix = np.matmul(X1, X2.T) * -2.
+        X1_norms = np.power(X1, 2).sum(axis=1)
+        X2_norms = np.power(X2, 2).sum(axis=1)
+        X1_n = len(X1_norms)
+        ker_mat = -(dp_matrix + X1_norms.reshape(X1_n, -1) + X2_norms)
+        ker_mat = ker_mat/(2*sigma**2.)
+        ker_mat = np.exp(ker_mat)
+        return ker_mat

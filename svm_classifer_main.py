@@ -8,21 +8,55 @@ from util.stopword_removal import StopwordRemover
 from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
 from sklearn.feature_extraction.text import TfidfVectorizer
 import time
+from gensim.models.doc2vec import TaggedDocument, Doc2Vec
 
 
-def preprocess_for_clf(X_train, X_test):
+def preprocess_for_clf(X_train, Y_train, X_test):
     sr = StopwordRemover()
     stemmer = StemmerFactory().create_stemmer()
-    vectorizer = TfidfVectorizer(ngram_range=(1, 1), max_features=1000)
+    vectorizer = TfidfVectorizer(ngram_range=(1, 3) , max_features=5000)
     X_train_str = [sr.remove_stopwords(' '.join(x)) for x in X_train]
     X_test_str = [sr.remove_stopwords(' '.join(x)) for x in X_test]
     X_train_str = [stemmer.stem(x) for x in X_train_str]
     X_test_str = [stemmer.stem(x) for x in X_test_str]
 
-    X_train = vectorizer.fit_transform(X_train_str)
-    X_test = vectorizer.transform(X_test_str)
-    return X_train.toarray(), X_test.toarray()
+    # X_train_tagged = [TaggedDocument(words=x.split(), tags=y)
+    #                   for x, y in zip(X_train_str, Y_train)]
+    #
+    # max_epochs = 100
+    # vec_size = 300
+    # alpha = 0.025
+    # model = Doc2Vec(size=vec_size,
+    #                 alpha=alpha,
+    #                 min_alpha=0.00025,
+    #                 min_count=1,
+    #                 dm=1,
+    #                 workers=6)
+    # model.build_vocab(X_train_tagged)
+    #
+    # for epoch in range(max_epochs):
+    #     print('iteration {0}'.format(epoch))
+    #     model.train(X_train_tagged,
+    #                 total_examples=model.corpus_count,
+    #                 epochs=model.iter)
+    #     # decrease the learning rate
+    #     model.alpha -= 0.0002
+    #     # fix the learning rate, no decay
+    #     model.min_alpha = model.alpha
+    #
+    # model.save('d2v.model')
+    # print("model saved")
 
+    model = Doc2Vec.load('d2v.model')
+
+    X_train = np.array([model.infer_vector(x.split()) for x in X_train_str])
+    X_test = np.array([model.infer_vector(x.split()) for x in X_test_str])
+    # X_train = vectorizer.fit_transform(X_train_str)
+    # X_test = vectorizer.transform(X_test_str)
+    # return X_train.toarray(), X_test.toarray()
+    return X_train, X_test
+
+# Best with doc2vec vec_size 300 Test accuracy: 0.32416832339297535
 if __name__ == '__main__':
     # load data
     # train_df = pd.read_csv('data/to_debug.csv')
@@ -37,35 +71,12 @@ if __name__ == '__main__':
     print('training length:', len(X_train))
     print('test length:', len(X_test))
 
-    X_train, X_test = preprocess_for_clf(X_train, X_test)
+    X_train, X_test = preprocess_for_clf(X_train, Y_train, X_test)
     print('preprocessing done in', (time.time() - tic), 'seconds')
 
     tic = time.time()
-    clf = MultilabelSVMClassifier(n_jobs=6)
+    clf = MultilabelSVMClassifier(n_jobs=6, C=0.2, kernel='poly', show_progress=True)
     clf.fit(X_train, Y_train)
-    # print('fitting done, pickling classifier...')
-    # with open('multilabel_mnb.classifier', 'wb') as pickle_file:
-    #     # clf = dill.load(pickle_file)
-    #     dill.dump(clf, pickle_file)
-    # print('model fitting done in', (time.time() - tic), 'seconds')
-
-    # thresholds = np.array([0.01, 0.3, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95])
-    # thresholds = np.log(thresholds)
-    # best_threshold = 0.5
-    # best_jaccard_similarity = 0
-
-    # tic = time.time()
-    # log_probas_all = clf.predict_log_proba(X_train)
-    # print('Predicting training data done in', (time.time() - tic), 'seconds')
-    # for t in thresholds:
-    #     Y_pred = get_predictions(log_probas_all, t)
-    #     avg_jaccard = multilabel_accuracy(Y_train, Y_pred)
-    #     print(np.exp(t), avg_jaccard)
-    #     if avg_jaccard > best_jaccard_similarity:
-    #         best_jaccard_similarity = avg_jaccard
-    #         best_threshold = t
-    #
-    # print('best threshold (in log scale):', np.exp(best_threshold), best_jaccard_similarity)
 
     tic = time.time()
     Y_test_pred = clf.predict(X_test)
