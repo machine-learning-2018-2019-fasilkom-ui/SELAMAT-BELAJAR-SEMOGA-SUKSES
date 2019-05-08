@@ -1,6 +1,5 @@
 import numpy as np
 import cvxopt
-import time
 
 
 class SVMClassifier:
@@ -18,7 +17,6 @@ class SVMClassifier:
             self.ker_mat_func = lambda x, y: self.__ker_mat_poly(x, y, poly_c, poly_d)
         elif kernel == 'rbf':
             rbf_sigma = kwargs.get('rbf_sigma', 5)
-            print(rbf_sigma)
             self.ker_mat_func = lambda x, y: self.__ker_mat_rbf(x, y, rbf_sigma)
 
     def fit(self, X, y):
@@ -53,19 +51,15 @@ class SVMClassifier:
         y_predict = y_predict.sum(axis=0)
         y_predict += self.b
 
-        return np.array(list(map(lambda x: self.label_map[x], np.sign(y_predict)))),\
-               y_predict
+        return np.array(list(map(lambda x: self.label_map[x], np.sign(y_predict))))
 
     def __generate_lambda(self, X, y):
         n, features = X.shape
 
         # http://cvxopt.org/userguide/coneprog.html#quadratic-programming
         # need to maximize L(lambda) w.r.t. lambda --> minimize -L(lambda)
-        print('Constructing matrix P')
-        now = time.time()
         ker_mat = self.ker_mat_func(X, X)
         P = np.outer(y, y) * ker_mat
-        print('Construction done in', (time.time() - now), 'seconds')
 
         P = cvxopt.matrix(P)
         q = cvxopt.matrix(np.ones(n) * -1)

@@ -1,22 +1,13 @@
 import numpy as np
-from util.svm import get_binary_clf
-from .svc import SVMClassifier
-from collections import defaultdict
-import pathos.multiprocessing as mp
-from multiprocess import Manager, Queue, Process
-import itertools
-from scipy.stats import mode
 from .svc_large import LargeSVMClassifier
 import time
 
 # Multilabel MNB Text Classifier, implemented via one vs one
-# Also implemented with multiprocessing TODO
 class MultilabelSVMClassifier:
 
-    def __init__(self, n_jobs=-1, **kwargs):
+    def __init__(self, **kwargs):
         self.svc_kwargs = kwargs
         self.fit_done = False
-        #self.n_jobs = mp.cpu_count()+2 if n_jobs == -1 else n_jobs TODO
 
     def fit(self, X, Y):
         assert not self.fit_done
@@ -29,7 +20,7 @@ class MultilabelSVMClassifier:
             now = time.time()
             print('multilabel: fitting', label)
             y_tofit = np.array([1 if label in y else 0 for y in Y])
-            svc = LargeSVMClassifier(3, 3000, **self.svc_kwargs)
+            svc = LargeSVMClassifier(7, 3000, **self.svc_kwargs)
             svc.fit(X, y_tofit)
             self.classifiers[label] = svc
             print('label fit', label, 'done in', (time.time()-now), 'seconds')
@@ -51,6 +42,5 @@ class MultilabelSVMClassifier:
 
         return pred_labels
 
-    # Get one vs one classifier
 
 

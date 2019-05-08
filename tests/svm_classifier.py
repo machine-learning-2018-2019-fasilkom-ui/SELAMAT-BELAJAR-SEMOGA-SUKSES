@@ -30,7 +30,7 @@ if __name__ == '__main__':
     t = np.array([-1, -1, 1, 1, 1])
 
     X_test = np.array([[0.53223423, 4.2422343242]])
-    y_test, _ = svm.predict(X_test)
+    y_test = svm.predict(X_test)
 
     np.testing.assert_array_almost_equal(svm.sv, g)
     np.testing.assert_array_almost_equal(svm.svt, t)
@@ -102,7 +102,7 @@ if __name__ == '__main__':
 
     clf = SVMClassifier(kernel='poly', poly_c=1, poly_d=3)
     clf.fit(X_train, y_train)
-    y_test , _ = clf.predict(X_test)
+    y_test = clf.predict(X_test)
     g = np.array([1., -1., 1., -1., -1., 1., 1., 1.])
     np.testing.assert_array_almost_equal(y_test, g)
 

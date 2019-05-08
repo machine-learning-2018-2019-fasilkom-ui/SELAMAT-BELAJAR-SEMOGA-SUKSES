@@ -20,7 +20,7 @@ class LargeSVMClassifier:
         n = len(X)
         train_ratio = min(self.max_data_per_train,n)/n
         for i in range(self.num_svms):
-            X_train, _, y_train, _ = train_test_split(X, y, train_size=train_ratio, stratify=y)
+            X_train, _, y_train, _ = train_test_split(X, y, train_size=train_ratio, test_size=1-train_ratio, stratify=y)
             svc = SVMClassifier(**self.svc_kwargs)
             svc.fit(X_train, y_train)
             self.svcs.append(svc)
@@ -29,8 +29,5 @@ class LargeSVMClassifier:
 
     def predict(self, X):
         assert self.fit_done
-        preds = np.array([
-            svc.predict(X)[0] for svc in self.svcs # svc.predict returns a tuple
-        ])
+        preds = np.array([svc.predict(X) for svc in self.svcs])
         return mode(preds)[0][0]
-        pass

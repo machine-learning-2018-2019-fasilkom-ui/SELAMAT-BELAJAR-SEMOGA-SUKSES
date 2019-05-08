@@ -1,11 +1,8 @@
 import numpy as np
 from multiprocess import Manager, Queue, Process
-# import multiprocess as mp
 import pathos.multiprocessing as mp
-import sys
-import time
 from util.multiprocessing import sequential_execute
-from util.naive_bayes import get_binary_clf_from_multilabel, multilabel_proba_single
+from util.naive_bayes import get_binary_clf_from_multilabel
 
 # Multilabel MNB Text Classifier, implemented via one vs rest
 # Also implemented with multiprocessing
@@ -22,15 +19,11 @@ class MultilabelMNBTextClassifier:
         assert len(X) == len(Y)
 
         possible_labels = list(set(y_val for y in Y for y_val in y))
-
-        # print('possible_labels:', possible_labels)
         job_labels = np.array_split(possible_labels, self.n_jobs)
 
-        now = time.time()
         with Manager() as manager:
             X_proxy = manager.list(X)
             Y_proxy = manager.list(Y)
-            # print('getting')
             output_queue = Queue()
             processes = [Process(target=sequential_execute,
                                  args=(output_queue,
@@ -46,9 +39,6 @@ class MultilabelMNBTextClassifier:
             [p.join() for p in processes]
 
         self.classifiers = dict(results)
-        # print('fit time elapsed:', (time.time() - now))
-        # print(self.classifiers)
-
         self.fit_done = True
 
     def predict_log_proba_single(self, x, max_classes=-1):
