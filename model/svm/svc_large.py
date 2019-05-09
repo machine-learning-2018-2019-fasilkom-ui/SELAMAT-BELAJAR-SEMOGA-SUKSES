@@ -18,9 +18,12 @@ class LargeSVMClassifier:
     def fit(self, X, y):
         assert not self.fit_done
         n = len(X)
-        train_ratio = min(self.max_data_per_train,n)/n
         for i in range(self.num_svms):
-            X_train, _, y_train, _ = train_test_split(X, y, train_size=train_ratio, test_size=1-train_ratio, stratify=y)
+            X_train, y_train = X, y
+            if min(self.max_data_per_train,n) != n:
+                train_ratio = min(self.max_data_per_train,n)/n
+                X_train, _, y_train, _ = train_test_split(X, y, test_size=1.-train_ratio, stratify=y)
+
             svc = SVMClassifier(**self.svc_kwargs)
             svc.fit(X_train, y_train)
             self.svcs.append(svc)

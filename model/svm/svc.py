@@ -36,7 +36,6 @@ class SVMClassifier:
         self.svt = y[self._lambda > self.TOL]
 
         sv_num = len(self.sv)
-        print('support vectors:', sv_num)
 
         lambda_svt = self.lambda_sv * self.svt # lambda_m * t_m
         sv_ker_mat = self.ker_mat_func(self.sv, self.sv) # np.matmul(self.sv, self.sv.T) # (in linear) TODO: fix

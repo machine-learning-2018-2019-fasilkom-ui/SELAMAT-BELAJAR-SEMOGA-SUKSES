@@ -3,8 +3,9 @@ import numpy as np
 from model.svm import MultilabelSVMClassifier
 from metric.multilabel import multilabel_accuracy
 from util.preprocessing import data_to_examples
-from util.svm import get_clf_reports_per_label
+from util.svm import print_clf_reports_per_label
 from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.model_selection import train_test_split
 import time
 from gensim.models.doc2vec import Doc2Vec
 
@@ -63,13 +64,30 @@ def preprocess_for_clf(X_train, X_test):
 
     return X_train, X_test
 
-# Best with doc2vec vec_size 300 Test accuracy: 0.32416832339297535 linear
-# 0.36 -> countvectorizer 1000 linear 1,3
-# 0.37 -> countvectorizer 2000 no stopwords no stemming 1,3 linear C=0.5
-# 0.378 -> countvectorizer 2000 no stopwords no stemming 1,1 linear C=0.5
-# 0.388 -> countvectorizer+doc2vec 2000+300 no stopwords no stemming 1,1 linear C=0.7
-# 0.39 -> countvectorizer+doc2vec 2000+300 no stopwords no stemming 1,1 linear C=0.7 5 classifiers
-# 0.4 -> countvectorizer+doc2vec 2000+300 no stopwords no stemming 1,1 linear C=0.7 9 classifiers
+
+def get_best_C(X_train, Y_train, X_val, Y_val):
+    best_accuracy = 0
+    cs = np.linspace(0.1, 1, 10)  # 0, 0.1, 0.2, ..., 1
+    c_select = -1
+    c_accuracies = []
+    for c in cs:
+        clf = MultilabelSVMClassifier(C=c, kernel='linear')
+        clf.fit(X_train, Y_train)
+        Y_val_pred = clf.predict(X_val)
+        val_accuracy = multilabel_accuracy(Y_val, Y_val_pred)
+        print("Trying C:", c)
+        print("Validation accuracy:", val_accuracy)
+        if val_accuracy > best_accuracy:
+            c_select = c
+            best_accuracy = val_accuracy
+
+    print(cs)
+    print(c_accuracies)
+    print("Best C (according to validation accuracy):", c_select)
+
+    return c_select
+
+
 if __name__ == '__main__':
     # load data
     # train_df = pd.read_csv('data/to_debug.csv')
@@ -79,28 +97,26 @@ if __name__ == '__main__':
     # load training+test data to examples
     tic = time.time()
     print('preprocessing...')
-    X_train, Y_train = data_to_examples(train_df)
+    X_train_full, Y_train_full = data_to_examples(train_df)
     X_test, Y_test = data_to_examples(test_df)
-    print('training length:', len(X_train))
-    print('test length:', len(X_test))
+    print('Training size:', len(X_train_full))
+    print('Test size:', len(X_test))
 
-    X_train, X_test = preprocess_for_clf(X_train, X_test)
-    print(X_train.shape)
+    X_train_full, X_test = preprocess_for_clf(X_train_full, X_test)
+    X_train, X_val, Y_train, Y_val = train_test_split(X_train_full, Y_train_full, test_size=0.2, random_state=322)
     print('preprocessing done in', (time.time() - tic), 'seconds')
 
+    c = get_best_C(X_train, Y_train, X_val, Y_val)
+
     tic = time.time()
-    clf = MultilabelSVMClassifier(C=0.7, kernel='linear')
-    clf.fit(X_train, Y_train)
+    clf = MultilabelSVMClassifier(C=c, kernel='linear')
+    clf.fit(X_train_full, Y_train_full)
 
     tic = time.time()
     Y_test_pred = clf.predict(X_test)
     print('Predicting test data done in', (time.time() - tic), 'seconds')
     test_accuracy = multilabel_accuracy(Y_test, Y_test_pred)
-    clf_reports = get_clf_reports_per_label(clf, X_test, Y_test)
-    print('per label predictions:')
-    for label, report in clf_reports.items():
-        print('-----------------------', label)
-        print(report)
+    print_clf_reports_per_label(clf, X_test, Y_test)
     print('Test accuracy:', test_accuracy)
 
 
