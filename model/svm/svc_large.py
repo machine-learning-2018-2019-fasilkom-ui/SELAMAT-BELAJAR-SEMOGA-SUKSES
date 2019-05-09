@@ -1,7 +1,7 @@
 from .svc import SVMClassifier
-from sklearn.model_selection import train_test_split
 import numpy as np
 from scipy.stats import mode
+from sklearn.model_selection import train_test_split
 
 # SVMClassifier for large data, uses random sampling on training set and
 class LargeSVMClassifier:

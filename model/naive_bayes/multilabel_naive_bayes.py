@@ -4,6 +4,7 @@ import pathos.multiprocessing as mp
 from util.multiprocessing import sequential_execute
 from util.naive_bayes import get_binary_clf_from_multilabel
 
+
 # Multilabel MNB Text Classifier, implemented via one vs rest
 # Also implemented with multiprocessing
 # Probability with log scale

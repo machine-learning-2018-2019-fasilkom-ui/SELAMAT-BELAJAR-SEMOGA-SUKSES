@@ -1,6 +1,7 @@
 from collections import defaultdict
 import numpy as np
 
+
 # all proba is in log scale
 # binary only
 class MNBTextClassifier:

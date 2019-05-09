@@ -1,13 +1,8 @@
-import sys
-import multiprocess as mp
 import numpy as np
 from model.naive_bayes import MNBTextClassifier
 
 
 def get_binary_clf_from_multilabel(X, Y, label, return_label=False):
-    # process = mp.current_process()
-    # print('nb_util: creating classifier for label', label, 'PID:', process.pid)
-    # sys.stdout.flush()
     clf = MNBTextClassifier()
     y_tofit = [1 if label in y else 0
                for y in Y]
@@ -19,9 +14,6 @@ def get_binary_clf_from_multilabel(X, Y, label, return_label=False):
 
 
 def multilabel_proba_single(x, classifiers, max_classes=-1, output_id=None):
-    # process = mp.current_process()
-    # print('PID:', process.pid, 'id:', output_id)
-    # sys.stdout.flush()
     class_proba = []
     for label in classifiers.keys():
         proba = dict(classifiers[label].predict_log_proba_single(x))[1]

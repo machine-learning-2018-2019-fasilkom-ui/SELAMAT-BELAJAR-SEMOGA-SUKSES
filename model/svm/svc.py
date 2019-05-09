@@ -38,14 +38,14 @@ class SVMClassifier:
         sv_num = len(self.sv)
 
         lambda_svt = self.lambda_sv * self.svt # lambda_m * t_m
-        sv_ker_mat = self.ker_mat_func(self.sv, self.sv) # np.matmul(self.sv, self.sv.T) # (in linear) TODO: fix
+        sv_ker_mat = self.ker_mat_func(self.sv, self.sv)
         self.b = (1./sv_num) * (self.svt.sum() - (sv_ker_mat @ lambda_svt).sum())
 
         return self
 
     def predict(self, X):
         lambda_svt_diag = np.diag(self.lambda_sv * self.svt)
-        sv_ker_mat = self.ker_mat_func(self.sv, X) #np.matmul(self.sv, X.T)
+        sv_ker_mat = self.ker_mat_func(self.sv, X)
         y_predict = np.matmul(lambda_svt_diag, sv_ker_mat)
         y_predict = y_predict.sum(axis=0)
         y_predict += self.b

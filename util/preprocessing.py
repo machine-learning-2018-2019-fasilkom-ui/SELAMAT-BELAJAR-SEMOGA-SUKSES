@@ -2,6 +2,7 @@ import json
 import re
 import numpy as np
 
+
 # given panda dataframe return X(examples) and Y(class)
 def data_to_examples(df):
     X = []

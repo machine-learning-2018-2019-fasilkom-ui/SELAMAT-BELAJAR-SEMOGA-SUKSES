@@ -1,6 +1,7 @@
 from model.svm import SVMClassifier
 import numpy as np
 
+
 def gen_svm():
     X = np.zeros((100,2))
     np.random.seed(64)

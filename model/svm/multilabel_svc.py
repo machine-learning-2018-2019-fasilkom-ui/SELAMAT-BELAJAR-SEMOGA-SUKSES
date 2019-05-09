@@ -2,7 +2,7 @@ import numpy as np
 from .svc_large import LargeSVMClassifier
 import time
 
-# Multilabel MNB Text Classifier, implemented via one vs one
+# Multilabel SVM Classifier, implemented via binary relevance + bagging ensemble (7 SVMS) for large datasets
 class MultilabelSVMClassifier:
 
     def __init__(self, **kwargs):
