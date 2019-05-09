@@ -75,6 +75,7 @@ def get_best_C(X_train, Y_train, X_val, Y_val):
         clf.fit(X_train, Y_train)
         Y_val_pred = clf.predict(X_val)
         val_accuracy = multilabel_accuracy(Y_val, Y_val_pred)
+        c_accuracies.append(val_accuracy)
         print("Trying C:", c)
         print("Validation accuracy:", val_accuracy)
         if val_accuracy > best_accuracy:
@@ -106,7 +107,8 @@ if __name__ == '__main__':
     X_train, X_val, Y_train, Y_val = train_test_split(X_train_full, Y_train_full, test_size=0.2, random_state=322)
     print('preprocessing done in', (time.time() - tic), 'seconds')
 
-    c = get_best_C(X_train, Y_train, X_val, Y_val)
+    # c = get_best_C(X_train, Y_train, X_val, Y_val) best C = 0.3
+    c = 0.3
 
     tic = time.time()
     clf = MultilabelSVMClassifier(C=c, kernel='linear')
