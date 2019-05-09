@@ -17,7 +17,8 @@ SVM (*Support Vector Machine*) mempunyai performa prediksi yang lebih baik diban
 
 
 ### Menjalankan Program
-- Pastikan seluruh *dependency* yang ada di berkas `requirements.txt` sudah di-*install*.
+- Pastikan Anda mempunyai Python versi 3 dan
+seluruh *dependency* yang ada di berkas `requirements.txt` sudah di-*install*.
 
 - Model yang sudah *pre-trained* (Doc2Vec, Multilabel MNB, Multilabel SVM) dapat diunduh di
 [tautan ini](https://drive.google.com/file/d/1rdywcrDqJWguBP4RCnGc1eDNpvWGVsEm/view?usp=sharing).
@@ -28,7 +29,7 @@ model yang ingin dilakukan *training*. (Perhatian: **cukup lama**)
 
 - Terdapat dua buah *script* yang bisa dijalankan:
 `naive_bayes_main.py` (*baseline model*), dan
-`svm_classifier_main` (*SVM model*). Kedua *script* akan melakukan prediksi
+`svm_classifier_main.py` (*SVM model*). Kedua *script* akan melakukan prediksi
 dan evaluasi dan menyimpan hasilnya pada folder `results`.
 
 ### Test Program
